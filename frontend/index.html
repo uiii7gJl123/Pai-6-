@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>pai‑6 — Operational AI</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 2rem; background: #fafafa; color: #111; }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 { font-size: 1.8rem; margin-bottom: .75rem; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 1rem; }
+    .card { border: 1px solid #e5e7eb; border-radius: 14px; padding: 16px; background: #fff; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    label { display: block; font-size: .9rem; margin-bottom: .5rem; color: #374151; }
+    input[type="text"], textarea { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 1rem; }
+    textarea { min-height: 120px; resize: vertical; }
+    button { padding: 10px 14px; border: 1px solid #111827; background: #111827; color: white; border-radius: 10px; cursor: pointer; font-size: .95rem; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .muted { color: #6b7280; font-size: .9rem; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .out { white-space: pre-wrap; background: #f3f4f6; padding: 12px; border-radius: 10px; min-height: 56px; }
+    .ok { color: #047857; }
+    .err { color: #b91c1c; }
+    .footer { margin-top: 2rem; font-size: .85rem; color: #6b7280; }
+    .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .chip { border: 1px dashed #d1d5db; padding: 4px 8px; border-radius: 999px; font-size: .85rem; color: #374151; background: #f9fafb; }
+    a { color: #111827; }
+    .badge { font-size: .75rem; background: #eef2ff; color: #3730a3; border-radius: 999px; padding: 2px 8px; border: 1px solid #c7d2fe; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>pai‑6 — Operational AI <span class="badge">Render-ready</span></h1>
+    <div class="muted">نسخة موحدة: واجهة ساكنة + API (FastAPI). رفع على Render مباشرة.</div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>الدردشة</h3>
+        <label for="msg">رسالتك</label>
+        <textarea id="msg" placeholder="اكتب هنا..."></textarea>
+        <div class="row" style="margin-top: 8px;">
+          <button id="send">إرسال</button>
+          <div id="chatStatus" class="muted"></div>
+        </div>
+        <div id="chatOut" class="out" style="margin-top: 12px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>رفع ملف</h3>
+        <label for="file">اختر ملف</label>
+        <input id="file" type="file"/>
+        <div class="row" style="margin-top: 8px;">
+          <button id="upload">رفع</button>
+          <div id="upStatus" class="muted"></div>
+        </div>
+        <div id="upOut" class="out" style="margin-top: 12px;"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <h3>روابط سريعة</h3>
+      <div class="chips">
+        <span class="chip"><a href="/api/health" target="_blank">/api/health</a></span>
+        <span class="chip">رفع → POST /api/upload</span>
+        <span class="chip">شات → POST /api/chat</span>
+        <span class="chip">ملفات مرفوعة محفوظة في مجلد <code>uploads/</code></span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>جاهز للنشر على Render. لا يحتاج بيئة منفصلة للواجهة.</span>
+    </div>
+  </div>
+
+  <script>
+    async function postJSON(url, data) {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    }
+
+    document.getElementById('send').addEventListener('click', async () => {
+      const msg = document.getElementById('msg').value.trim();
+      const status = document.getElementById('chatStatus');
+      const out = document.getElementById('chatOut');
+      status.textContent = '...';
+      try {
+        const data = await postJSON('/api/chat', { message: msg });
+        out.textContent = data.reply || JSON.stringify(data);
+        status.textContent = 'تم';
+        status.className = 'ok';
+      } catch (e) {
+        status.textContent = 'خطأ';
+        status.className = 'err';
+        out.textContent = e.message;
+      }
+    });
+
+    document.getElementById('upload').addEventListener('click', async () => {
+      const f = document.getElementById('file').files[0];
+      const status = document.getElementById('upStatus');
+      const out = document.getElementById('upOut');
+      status.textContent = '...';
+      if (!f) { status.textContent = 'اختر ملفاً'; status.className='err'; return; }
+      const fd = new FormData();
+      fd.append('file', f);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        out.textContent = JSON.stringify(data, null, 2);
+        status.textContent = 'تم';
+        status.className = 'ok';
+      } catch (e) {
+        status.textContent = 'خطأ';
+        status.className = 'err';
+        out.textContent = e.message;
+      }
+    });
+  </script>
+</body>
+</html>
