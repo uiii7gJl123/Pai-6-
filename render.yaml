@@ -15,3 +15,5 @@ services:
         value: 20.18.0
       - key: UPLOAD_DIR
         value: uploads
+      - key: OPENAI_API_KEY   # أضف القيمة من لوحة Render
+        sync: false
