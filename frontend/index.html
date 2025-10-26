@@ -1,0 +1,66 @@
+
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>pai‑6 — Operational AI</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    .card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+    h1 { font-size: 1.6rem; margin-bottom: .5rem; }
+    h2 { font-size: 1.1rem; margin: .5rem 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: start; }
+    .badge { padding: 2px 8px; border-radius: 999px; background: #eef2ff; display: inline-block; margin-inline-start: 6px; }
+  </style>
+</head>
+<body>
+  <h1>pai‑6 — Operational AI (Launch Edition)</h1>
+  <div class="card">
+    <h2>حالة الخدمة</h2>
+    <pre id="health">...</pre>
+  </div>
+
+  <div class="card">
+    <h2>الخطط</h2>
+    <table id="plans"></table>
+  </div>
+
+  <div class="card">
+    <h2>المشاريع</h2>
+    <table id="projects"></table>
+  </div>
+
+  <div class="card">
+    <h2>الأوزان</h2>
+    <pre id="weights">...</pre>
+  </div>
+
+  <script>
+    const API = location.origin.includes(":8000") ? location.origin : (location.origin + "");
+    async function fetchJSON(path){ const r=await fetch(path); return r.json(); }
+    function table(el, rows, headers){
+      el.innerHTML = "<tr>" + headers.map(h=>`<th>${h}</th>`).join("") + "</tr>" +
+                     rows.map(r=>"<tr>"+r.map(c=>`<td>${c}</td>`).join("")+"</tr>").join("");
+    }
+    (async () => {
+      try {
+        const health = await fetchJSON("/api/health");
+        document.getElementById("health").textContent = JSON.stringify(health, null, 2);
+
+        const plans = await fetchJSON("/api/plans");
+        table(document.getElementById("plans"), plans.map(p=>[p.id, p.title, p.owner, (p.progress*100).toFixed(0)+"%", p.status]), ["ID","العنوان","المالك","التقدم","الحالة"]);
+
+        const projects = await fetchJSON("/api/projects");
+        table(document.getElementById("projects"), projects.map(p=>[p.id, p.name, p.sector, p.spi.toFixed(2), p.cpi.toFixed(2)]), ["ID","المشروع","القطاع","SPI","CPI"]);
+
+        const weights = await fetchJSON("/api/weights");
+        document.getElementById("weights").textContent = JSON.stringify(weights, null, 2);
+      } catch(e){
+        document.getElementById("health").textContent = "تعذر الاتصال بالـ API ("+e.message+")";
+      }
+    })();
+  </script>
+</body>
+</html>
