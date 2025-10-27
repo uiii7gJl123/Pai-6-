@@ -1,21 +1,30 @@
 import React, { useRef, useState } from 'react'
 import { uploadFile } from '../api'
+import UploadConfirm from './UploadConfirm'
 
 export default function ImportExportPanel() {
   const fileRef = useRef(null)
   const [status, setStatus] = useState(null)
+  const [pendingFile, setPendingFile] = useState(null)
 
-  async function onFile(e) {
+  function choose() { fileRef.current?.click() }
+
+  function onPick(e) {
     const f = e.target.files?.[0]
-    if (!f) return
-    setStatus('جارِ الرفع…')
+    e.target.value = ''
+    if (f) setPendingFile(f)
+  }
+
+  async function confirmUpload(instruction) {
+    if (!pendingFile) return
+    setStatus('جارٍ الرفع…')
     try {
-      const res = await uploadFile(f)
-      setStatus('تم الرفع: ' + (res?.status || 'OK'))
+      const res = await uploadFile(pendingFile, instruction)
+      setStatus(`تم: ${res?.dest_folder || 'ok'} → ${res?.filename}`)
     } catch (e) {
-      setStatus('فشل الرفع: ' + (e?.message || 'خطأ'))
+      setStatus('فشل الرفع: ' + (e?.message || 'Network'))
     } finally {
-      e.target.value = ''
+      setPendingFile(null)
     }
   }
 
@@ -32,12 +41,20 @@ export default function ImportExportPanel() {
 
   return (
     <div className="card space-y-3">
+      <input ref={fileRef} type="file" className="hidden" onChange={onPick} />
       <div className="flex items-center gap-3">
-        <input ref={fileRef} type="file" className="hidden" onChange={onFile} />
-        <button className="btn" onClick={() => fileRef.current?.click()}>رفع ملف</button>
+        <button className="btn" onClick={choose}>اختيار ملف</button>
         <button className="btn-ghost" onClick={exportJSON}>تصدير JSON</button>
       </div>
       <div className="text-sm text-white/70 min-h-6">{status}</div>
+
+      {pendingFile && (
+        <UploadConfirm
+          file={pendingFile}
+          onCancel={() => setPendingFile(null)}
+          onConfirm={confirmUpload}
+        />
+      )}
     </div>
   )
 }
