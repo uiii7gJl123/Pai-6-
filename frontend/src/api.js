@@ -48,3 +48,24 @@ export async function deleteFiles(ids = []) {
   const { data } = await client.post('/api/files/delete', { ids })
   return data
 }
+
+/* دوال مطلوبة للداشبورد. حالياً بيانات وهمية حتى تضيف APIs حقيقية. */
+export async function fetchOverview() {
+  return {
+    tasks: 12,
+    projects: 3,
+    clients: 5,
+    success_rate: 92,
+    ts: new Date().toISOString(),
+  }
+}
+
+export async function fetchProjects() {
+  return {
+    projects: [
+      { id: 1, name: 'مشروع مستشفى الرياض', sector: 'صحي', progress: 0.75 },
+      { id: 2, name: 'برج الميناء',        sector: 'تجاري', progress: 0.4  },
+      { id: 3, name: 'مجمع سكني الشمال',   sector: 'سكني',  progress: 0.2  },
+    ],
+  }
+}
