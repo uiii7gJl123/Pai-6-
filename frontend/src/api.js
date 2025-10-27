@@ -1,13 +1,9 @@
 import axios from 'axios'
 
-// نفس دومين Render
 const ORIGIN = window.location.origin.replace(/\/$/, '')
-const ENV = (import.meta?.env?.VITE_API_URL || '').trim()
+const BASE = (import.meta?.env?.VITE_API_URL || '').trim() || ORIGIN
 
-const client = axios.create({
-  baseURL: ENV || ORIGIN,
-  timeout: 20000,
-})
+const client = axios.create({ baseURL: BASE, timeout: 20000 })
 
 // صحة
 export async function ping() {
@@ -18,36 +14,43 @@ export async function ping() {
 // دردشة
 export async function aiChat(message, meta = {}) {
   const { data } = await client.post('/api/chat', { message, meta })
-  return data
+  return data?.reply ?? String(data ?? '')
 }
 
-// رفع ملف عام (الـ backend يقبل المفتاح "file")
-export async function uploadFile(file) {
+// رفع عام + تمرير تعليمات
+export async function uploadFile(file, instruction = '') {
   const form = new FormData()
   form.append('file', file)
-  const { data } = await client.post('/api/upload', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  if (instruction) form.append('instruction', instruction)
+  const { data } = await client.post('/api/upload', form)
   return data
 }
 
-// مطابقة لتوقّعات MediaBar دون الحاجة لمسارات باك إضافية
-export async function uploadAudio(blob) {
-  const file = blob instanceof File ? blob :
-    new File([blob], 'recording.webm', { type: blob?.type || 'audio/webm' })
-  return uploadFile(file)
+// وسائط: صورة
+export async function uploadImage(blobOrFile, instruction = '') {
+  const file = blobOrFile instanceof File
+    ? blobOrFile
+    : new File([blobOrFile], 'capture.png', { type: 'image/png' })
+  const form = new FormData()
+  form.append('image', file)
+  if (instruction) form.append('instruction', instruction)
+  const { data } = await client.post('/api/upload/image', form)
+  return data
 }
 
-export async function uploadImage(blob) {
-  const file = blob instanceof File ? blob :
-    new File([blob], 'capture.png', { type: blob?.type || 'image/png' })
-  return uploadFile(file)
+// وسائط: صوت
+export async function uploadAudio(blobOrFile, instruction = '') {
+  const file = blobOrFile instanceof File
+    ? blobOrFile
+    : new File([blobOrFile], 'recording.webm', { type: 'audio/webm' })
+  const form = new FormData()
+  form.append('audio', file)
+  if (instruction) form.append('instruction', instruction)
+  const { data } = await client.post('/api/upload/audio', form)
+  return data
 }
 
-/* هذه الدوال كانت تضرب مسارات غير موجودة لديك.
-   نعيد بيانات محلية لتجنّب 404 لحين إضافة APIs حقيقية. */
-export async function fetchOverview() {
-  return { plans: [], status: 'ok', ts: new Date().toISOString() }
-}
+// بيانات لوحة (إن لم تكن APIs جاهزة)
+export async function fetchOverview() { return { plans: [], status: 'ok', ts: new Date().toISOString() } }
 export async function fetchProjects() { return { projects: [] } }
 export async function fetchStats() { return { totals: { files: 0, messages: 0 } } }
