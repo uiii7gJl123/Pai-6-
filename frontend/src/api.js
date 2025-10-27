@@ -2,22 +2,18 @@ import axios from 'axios'
 
 const ORIGIN = window.location.origin.replace(/\/$/, '')
 const BASE = (import.meta?.env?.VITE_API_URL || '').trim() || ORIGIN
-
 const client = axios.create({ baseURL: BASE, timeout: 20000 })
 
-// صحة
 export async function ping() {
   const { data } = await client.get('/api/health')
   return data
 }
 
-// دردشة
 export async function aiChat(message, meta = {}) {
   const { data } = await client.post('/api/chat', { message, meta })
   return data?.reply ?? String(data ?? '')
 }
 
-// رفع عام + تمرير تعليمات
 export async function uploadFile(file, instruction = '') {
   const form = new FormData()
   form.append('file', file)
@@ -26,7 +22,6 @@ export async function uploadFile(file, instruction = '') {
   return data
 }
 
-// وسائط: صورة
 export async function uploadImage(blobOrFile, instruction = '') {
   const file = blobOrFile instanceof File
     ? blobOrFile
@@ -38,7 +33,6 @@ export async function uploadImage(blobOrFile, instruction = '') {
   return data
 }
 
-// وسائط: صوت
 export async function uploadAudio(blobOrFile, instruction = '') {
   const file = blobOrFile instanceof File
     ? blobOrFile
@@ -50,7 +44,7 @@ export async function uploadAudio(blobOrFile, instruction = '') {
   return data
 }
 
-// بيانات لوحة (إن لم تكن APIs جاهزة)
-export async function fetchOverview() { return { plans: [], status: 'ok', ts: new Date().toISOString() } }
-export async function fetchProjects() { return { projects: [] } }
-export async function fetchStats() { return { totals: { files: 0, messages: 0 } } }
+export async function deleteFiles(ids = []) {
+  const { data } = await client.post('/api/files/delete', { ids })
+  return data
+}
