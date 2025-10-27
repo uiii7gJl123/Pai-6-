@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { fetchOverview, fetchProjects } from '../api'
+import FilesPanel from './FilesPanel'
 
 export default function Dashboard() {
   const [overview, setOverview] = useState(null)
@@ -9,7 +10,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     let mounted = true
-    async function run() {
+    ;(async () => {
       try {
         const [ov, pr] = await Promise.all([fetchOverview(), fetchProjects()])
         if (mounted) {
@@ -21,8 +22,7 @@ export default function Dashboard() {
       } finally {
         setLoading(false)
       }
-    }
-    run()
+    })()
     return () => { mounted = false }
   }, [])
 
@@ -31,6 +31,7 @@ export default function Dashboard() {
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
+      {/* النظرة العامة */}
       <div className="card col-span-2">
         <h2 className="text-sm text-white/70 mb-2">النظرة العامة</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -53,6 +54,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* إشعارات بسيطة */}
       <div className="card">
         <h2 className="text-sm text-white/70 mb-2">إشعارات</h2>
         <ul className="space-y-2 text-sm">
@@ -62,6 +64,13 @@ export default function Dashboard() {
         </ul>
       </div>
 
+      {/* الملفات المصنّفة من القاعدة */}
+      <div className="card col-span-3">
+        <h2 className="text-sm text-white/70 mb-3">الملفات الأخيرة</h2>
+        <FilesPanel />
+      </div>
+
+      {/* المشاريع */}
       <div className="card col-span-3">
         <h2 className="text-sm text-white/70 mb-3">المشاريع</h2>
         <div className="grid md:grid-cols-3 gap-3">
@@ -70,7 +79,7 @@ export default function Dashboard() {
               <div className="text-sm font-medium">{p.name || p.title || 'مشروع'}</div>
               <div className="text-xs text-white/60 mt-1">القطاع: {p.sector || p.owner || 'غير محدد'}</div>
               <div className="w-full bg-white/10 h-2 rounded mt-3 overflow-hidden">
-                <div className="bg-brand-600 h-2" style={{width: `${Math.round((p.progress ?? 0)*100)}%`}} />
+                <div className="bg-brand-600 h-2" style={{ width: `${Math.round((p.progress ?? 0) * 100)}%` }} />
               </div>
             </div>
           ))}
