@@ -49,7 +49,7 @@ export async function deleteFiles(ids = []) {
   return data
 }
 
-/* دوال مطلوبة للداشبورد. حالياً بيانات وهمية حتى تضيف APIs حقيقية. */
+/* مطلوبة للـ Dashboard.jsx */
 export async function fetchOverview() {
   return {
     tasks: 12,
@@ -63,9 +63,9 @@ export async function fetchOverview() {
 export async function fetchProjects() {
   return {
     projects: [
-      { id: 1, name: 'مشروع مستشفى الرياض', sector: 'صحي', progress: 0.75 },
-      { id: 2, name: 'برج الميناء',        sector: 'تجاري', progress: 0.4  },
-      { id: 3, name: 'مجمع سكني الشمال',   sector: 'سكني',  progress: 0.2  },
+      { id: 1, name: 'مشروع مستشفى الرياض', sector: 'صحي',   progress: 0.75 },
+      { id: 2, name: 'برج الميناء',        sector: 'تجاري', progress: 0.40 },
+      { id: 3, name: 'مجمع سكني الشمال',   sector: 'سكني',  progress: 0.20 },
     ],
   }
 }
