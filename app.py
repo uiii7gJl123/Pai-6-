@@ -1,4 +1,4 @@
-import os, shutil, mimetypes, time
+import os, shutil, mimetypes
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +11,7 @@ from openai import OpenAI
 import psycopg2, psycopg2.extras
 
 APP_NAME = "pai-6 — Operational AI (Render Edition)"
-APP_VERSION = "2.6.0"
+APP_VERSION = "2.6.1"
 
 app = FastAPI(title=APP_NAME, version=APP_VERSION)
 
@@ -36,13 +36,13 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 DB_URL = os.environ.get("DATABASE_URL")
 
 def db():
-    conn = psycopg2.connect(DB_URL, sslmode="require")
-    return conn
+    return psycopg2.connect(DB_URL, sslmode="require")
 
 @app.on_event("startup")
 def init_db():
     conn = db()
     cur = conn.cursor()
+    # إنشاء الجدول الأساسي إن لم يوجد
     cur.execute("""
     CREATE TABLE IF NOT EXISTS files (
       id SERIAL PRIMARY KEY,
@@ -51,10 +51,12 @@ def init_db():
       size_bytes INTEGER,
       dest_folder TEXT,
       path TEXT NOT NULL,
-      instruction TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
     """)
+    # هجرات idempotent
+    cur.execute("ALTER TABLE files ADD COLUMN IF NOT EXISTS instruction TEXT;")
+    cur.execute("ALTER TABLE files ALTER COLUMN created_at SET DEFAULT NOW();")
     conn.commit()
     conn.close()
 
@@ -100,7 +102,6 @@ def classify_folder(name: str, mime: str, sample_text: str) -> str:
         if mime.startswith("video/"): return "video"
         if mime in {"application/pdf","text/plain"}: return "docs"
         return "other"
-
     prompt = f"""صنّف هذا الملف إلى واحد فقط من:
 invoices, receipts, contracts, images, audio, video, docs, spreadsheets, presentations, code, other.
 الاسم: {name}
@@ -129,12 +130,12 @@ def process_upload(content: bytes, filename: str, content_type: str, instruction
     tmp_path = os.path.join(UPLOAD_DIR, filename)
     i = 1
     while os.path.exists(tmp_path):
-      tmp_path = os.path.join(UPLOAD_DIR, f"{base}_{i}{ext}")
-      i += 1
+        tmp_path = os.path.join(UPLOAD_DIR, f"{base}_{i}{ext}")
+        i += 1
     with open(tmp_path, "wb") as f:
-      f.write(content)
+        f.write(content)
 
-    # 2) استخراج معلومات للتصنيف
+    # 2) معلومات للتصنيف
     mime = content_type or mimetypes.guess_type(tmp_path)[0] or "application/octet-stream"
     try:
         if mime.startswith("text/") or ext.lower() in {".txt",".md",".csv",".log",".json"}:
