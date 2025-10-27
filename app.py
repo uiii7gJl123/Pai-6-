@@ -1,6 +1,6 @@
 import os, shutil, mimetypes, time
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ from openai import OpenAI
 import psycopg2, psycopg2.extras
 
 APP_NAME = "pai-6 — Operational AI (Render Edition)"
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.6.0"
 
 app = FastAPI(title=APP_NAME, version=APP_VERSION)
 
@@ -24,7 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# تخزين ملفات مؤقت
+# تخزين مؤقت
 UPLOAD_DIR = os.environ.get("UPLOAD_DIR", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -51,6 +51,7 @@ def init_db():
       size_bytes INTEGER,
       dest_folder TEXT,
       path TEXT NOT NULL,
+      instruction TEXT,
       created_at TIMESTAMP DEFAULT NOW()
     );
     """)
@@ -93,7 +94,6 @@ def chat(msg: ChatMessage):
         return {"error": "LLM_FAILED", "detail": str(e)}
 
 def classify_folder(name: str, mime: str, sample_text: str) -> str:
-    # قواعد بدائية إذا LLM غير مفعّل
     if client is None:
         if mime.startswith("image/"): return "images"
         if mime.startswith("audio/"): return "audio"
@@ -123,16 +123,16 @@ invoices, receipts, contracts, images, audio, video, docs, spreadsheets, present
     except Exception:
         return "other"
 
-def process_upload(content: bytes, filename: str, content_type: str):
+def process_upload(content: bytes, filename: str, content_type: str, instruction: Optional[str]):
     # 1) حفظ مؤقت باسم فريد
     base, ext = os.path.splitext(filename)
     tmp_path = os.path.join(UPLOAD_DIR, filename)
     i = 1
     while os.path.exists(tmp_path):
-        tmp_path = os.path.join(UPLOAD_DIR, f"{base}_{i}{ext}")
-        i += 1
+      tmp_path = os.path.join(UPLOAD_DIR, f"{base}_{i}{ext}")
+      i += 1
     with open(tmp_path, "wb") as f:
-        f.write(content)
+      f.write(content)
 
     # 2) استخراج معلومات للتصنيف
     mime = content_type or mimetypes.guess_type(tmp_path)[0] or "application/octet-stream"
@@ -147,18 +147,18 @@ def process_upload(content: bytes, filename: str, content_type: str):
     # 3) تصنيف
     folder = classify_folder(os.path.basename(tmp_path), mime, sample_text)
 
-    # 4) نقل للوجهة النهائية
+    # 4) نقل للوجهة
     dest_dir = os.path.join("vault", folder)
     os.makedirs(dest_dir, exist_ok=True)
     dest_path = os.path.join(dest_dir, os.path.basename(tmp_path))
     shutil.move(tmp_path, dest_path)
 
-    # 5) إدراج في قاعدة البيانات
+    # 5) حفظ في القاعدة
     conn = db()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO files (filename, mime, size_bytes, dest_folder, path) VALUES (%s,%s,%s,%s,%s);",
-        (os.path.basename(dest_path), mime, len(content), folder, dest_path)
+        "INSERT INTO files (filename, mime, size_bytes, dest_folder, path, instruction) VALUES (%s,%s,%s,%s,%s,%s);",
+        (os.path.basename(dest_path), mime, len(content), folder, dest_path, instruction)
     )
     conn.commit()
     conn.close()
@@ -168,34 +168,35 @@ def process_upload(content: bytes, filename: str, content_type: str):
         "filename": os.path.basename(dest_path),
         "mime": mime,
         "dest_folder": folder,
-        "path": dest_path
+        "path": dest_path,
+        "instruction": instruction,
     }
 
-# نقطة رفع عامة (تُستخدم من لوحة الاستيراد/التصدير)
+# نقاط الرفع مع دعم instruction
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...)):
+async def upload(file: UploadFile = File(...), instruction: Optional[str] = Form(None)):
     content = await file.read()
-    return process_upload(content, file.filename, file.content_type or "")
+    return process_upload(content, file.filename, file.content_type or "", instruction)
 
-# نقاط رفع للوسائط تُمرِّر لنفس المسار الذكي
 @app.post("/api/upload/audio")
-async def upload_audio(audio: UploadFile = File(...)):
+async def upload_audio(audio: UploadFile = File(...), instruction: Optional[str] = Form(None)):
     content = await audio.read()
     name = audio.filename or "recording.webm"
-    return process_upload(content, name, audio.content_type or "audio/webm")
+    return process_upload(content, name, audio.content_type or "audio/webm", instruction)
 
 @app.post("/api/upload/image")
-async def upload_image(image: UploadFile = File(...)):
+async def upload_image(image: UploadFile = File(...), instruction: Optional[str] = Form(None)):
     content = await image.read()
     name = image.filename or "capture.png"
-    return process_upload(content, name, image.content_type or "image/png")
+    return process_upload(content, name, image.content_type or "image/png", instruction)
 
-# عرض قائمة الملفات للوحة التحكم
+# قائمة الملفات
 @app.get("/api/files")
 def list_files(limit: int = 100):
     conn = db()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("SELECT id, filename, mime, size_bytes, dest_folder, path, created_at FROM files ORDER BY id DESC LIMIT %s;", (limit,))
+    cur.execute("""SELECT id, filename, mime, size_bytes, dest_folder, path, instruction, created_at
+                   FROM files ORDER BY id DESC LIMIT %s;""", (limit,))
     rows = cur.fetchall()
     conn.close()
     return {"items": rows}
