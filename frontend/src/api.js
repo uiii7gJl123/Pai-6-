@@ -49,7 +49,7 @@ export async function deleteFiles(ids = []) {
   return data
 }
 
-/* مطلوبة للـ Dashboard.jsx */
+/* بيانات وهمية للوحة القيادة إلى أن تُجهّز APIs حقيقية */
 export async function fetchOverview() {
   return {
     tasks: 12,
@@ -67,5 +67,13 @@ export async function fetchProjects() {
       { id: 2, name: 'برج الميناء',        sector: 'تجاري', progress: 0.40 },
       { id: 3, name: 'مجمع سكني الشمال',   sector: 'سكني',  progress: 0.20 },
     ],
+  }
+}
+
+export async function fetchStats() {
+  return {
+    totals: { files: 0, messages: 0 },
+    by_folder: { docs: 0, photos: 0, media: 0, other: 0 },
+    ts: new Date().toISOString(),
   }
 }
