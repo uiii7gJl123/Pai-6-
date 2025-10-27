@@ -49,31 +49,18 @@ export async function deleteFiles(ids = []) {
   return data
 }
 
-/* بيانات وهمية للوحة القيادة إلى أن تُجهّز APIs حقيقية */
+/* بيانات حقيقية من السيرفر للداشبورد */
 export async function fetchOverview() {
-  return {
-    tasks: 12,
-    projects: 3,
-    clients: 5,
-    success_rate: 92,
-    ts: new Date().toISOString(),
-  }
+  const { data } = await client.get('/api/overview')
+  return data
 }
 
 export async function fetchProjects() {
-  return {
-    projects: [
-      { id: 1, name: 'مشروع مستشفى الرياض', sector: 'صحي',   progress: 0.75 },
-      { id: 2, name: 'برج الميناء',        sector: 'تجاري', progress: 0.40 },
-      { id: 3, name: 'مجمع سكني الشمال',   sector: 'سكني',  progress: 0.20 },
-    ],
-  }
+  const { data } = await client.get('/api/projects')
+  return data
 }
 
 export async function fetchStats() {
-  return {
-    totals: { files: 0, messages: 0 },
-    by_folder: { docs: 0, photos: 0, media: 0, other: 0 },
-    ts: new Date().toISOString(),
-  }
+  const { data } = await client.get('/api/stats')
+  return data
 }
